@@ -304,8 +304,11 @@ open class ImageDownloader {
         }
         
         var downloadTask: RetrieveImageDownloadTask?
-        setup(progressBlock: progressBlock, with: completionHandler, for: url, options: options) {(session, fetchLoad) -> Void in
+        setup(progressBlock: progressBlock, with: completionHandler, for: url, options: options) {(session, fetchLoad, url) -> Void in
+
             if fetchLoad.downloadTask == nil {
+
+                request.url = url
                 let dataTask = session.dataTask(with: request)
                 
                 fetchLoad.downloadTask = RetrieveImageDownloadTask(internalTask: dataTask, ownerDownloader: self)
@@ -332,10 +335,18 @@ open class ImageDownloader {
 extension ImageDownloader {
     
     // A single key may have multiple callbacks. Only download once.
-    func setup(progressBlock: ImageDownloaderProgressBlock?, with completionHandler: ImageDownloaderCompletionHandler?, for url: URL, options: KingfisherOptionsInfo?, started: ((URLSession, ImageFetchLoad) -> Void)) {
+    func setup(progressBlock: ImageDownloaderProgressBlock?, with completionHandler: ImageDownloaderCompletionHandler?, for url: URL, options: KingfisherOptionsInfo?, started: ((URLSession, ImageFetchLoad, URL) -> Void)) {
 
         barrierQueue.sync(flags: .barrier) {
-            let loadObjectForURL = fetchLoads[url] ?? ImageFetchLoad()
+            var url = url
+            var loadObjectForURL = fetchLoads[url] ?? ImageFetchLoad()
+            let isCancelling = loadObjectForURL.downloadTask?.internalTask.state == .canceling
+            if isCancelling {
+                let now = "\(Date().timeIntervalSince1970)".replacingOccurrences(of: ".", with: "_")
+                url = URL(string: "\(url)?now=\(now)")!
+                loadObjectForURL = ImageFetchLoad()
+            }
+
             let callbackPair = (progressBlock: progressBlock, completionHandler: completionHandler)
             
             loadObjectForURL.contents.append((callbackPair, options ?? KingfisherEmptyOptionsInfo))
@@ -343,7 +354,7 @@ extension ImageDownloader {
             fetchLoads[url] = loadObjectForURL
             
             if let session = session {
-                started(session, loadObjectForURL)
+                started(session, loadObjectForURL, url)
             }
         }
     }
