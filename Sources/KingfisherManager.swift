@@ -55,11 +55,7 @@ public class RetrieveImageTask {
     Cancel current task. If this task is already done, do nothing.
     */
     public func cancel() {
-        if let downloadTask = downloadTask {
-            downloadTask.cancel()
-        } else {
-            cancelledBeforeDownloadStarting = true
-        }
+        downloadTask?.cancel()
     }
 }
 
