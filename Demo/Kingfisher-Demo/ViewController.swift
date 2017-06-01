@@ -67,8 +67,8 @@ extension ViewController {
     override func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
         
         let url = URL(string: "https://raw.githubusercontent.com/onevcat/Kingfisher/master/images/kingfisher-\(indexPath.row + 1).jpg")!
-        
-        _ = (cell as! CollectionViewCell).cellImageView.kf.setImage(with: url,
+
+        let task = (cell as! CollectionViewCell).cellImageView.kf.setImage(with: url,
                                            placeholder: nil,
                                            options: [.transition(ImageTransition.fade(1))],
                                            progressBlock: { receivedSize, totalSize in
@@ -77,6 +77,18 @@ extension ViewController {
                                            completionHandler: { image, error, cacheType, imageURL in
                                             print("\(indexPath.row + 1): Finished")
         })
+        DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + 0.1) {
+            task.cancel()
+            _ = (cell as! CollectionViewCell).cellImageView.kf.setImage(with: url,
+                                                                        placeholder: nil,
+                                                                        options: [.transition(ImageTransition.fade(1))],
+                                                                        progressBlock: { receivedSize, totalSize in
+                                                                            print("\(indexPath.row + 1): \(receivedSize)/\(totalSize)")
+            },
+                                                                        completionHandler: { image, error, cacheType, imageURL in
+                                                                            print("\(indexPath.row + 1): Finished")
+            })
+        }
     }
     
     override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
