@@ -30,6 +30,8 @@ import AppKit
 import UIKit
 #endif
 
+let barrierQueue = DispatchQueue(label: "com.onevcat.Kingfisher.ImageDownloader.Barrier.", attributes: [])
+
 /// Progress update block of downloader.
 public typealias ImageDownloaderProgressBlock = DownloadProgressBlock
 
@@ -217,7 +219,6 @@ open class ImageDownloader {
     open weak var authenticationChallengeResponder: AuthenticationChallengeResponsable?
     
     // MARK: - Internal property
-    let barrierQueue: DispatchQueue
     let processQueue: DispatchQueue
     
     typealias CallbackPair = (progressBlock: ImageDownloaderProgressBlock?, completionHandler: ImageDownloaderCompletionHandler?)
@@ -239,8 +240,7 @@ open class ImageDownloader {
         if name.isEmpty {
             fatalError("[Kingfisher] You should specify a name for the downloader. A downloader with empty name is not permitted.")
         }
-        
-        barrierQueue = DispatchQueue(label: "com.onevcat.Kingfisher.ImageDownloader.Barrier.\(name)", attributes: .concurrent)
+
         processQueue = DispatchQueue(label: "com.onevcat.Kingfisher.ImageDownloader.Process.\(name)", attributes: .concurrent)
         
         sessionHandler = ImageDownloaderSessionHandler()
@@ -256,7 +256,7 @@ open class ImageDownloader {
     
     func fetchLoad(for url: URL) -> ImageFetchLoad? {
         var fetchLoad: ImageFetchLoad?
-        barrierQueue.sync { fetchLoad = fetchLoads[url] }
+        barrierQueue.sync(flags: .barrier) { fetchLoad = fetchLoads[url] }
         return fetchLoad
     }
     
@@ -349,7 +349,7 @@ extension ImageDownloader {
     }
     
     func cancelDownloadingTask(_ task: RetrieveImageDownloadTask) {
-        barrierQueue.sync {
+        barrierQueue.sync(flags: .barrier) {
             if let URL = task.internalTask.originalRequest?.url, let imageFetchLoad = self.fetchLoads[URL] {
                 imageFetchLoad.downloadTaskCount -= 1
                 if imageFetchLoad.downloadTaskCount == 0 {
